@@ -8,14 +8,67 @@ const url = "https://api-pub.bitfinex.com/v2";
 
 let timeFrame = "15m";
 let ticker = "tBTCUSD";
+let arrayData;
 
 const proxyUrl = "https://cors-anywhere.herokuapp.com/",
   targetUrl = `${url}/candles/trade:${timeFrame}:${ticker}/hist?limit=365`;
+
 fetch(proxyUrl + targetUrl)
   .then(response => response.json())
   .then(data => {
-    console.table(data);
-    return data;
+    // aync await , promises but better
+    arrayData = data;
+
+    let volumeData = [];
+    arrayData.map(el => {
+      volumeData.push(el[5]);
+    });
+
+    const svgWidth = 4000,
+      svgHeight = 2000,
+      barPadding = 5;
+    const barWidth = svgHeight / volumeData.length;
+
+    const svg = d3
+      .select("svg")
+      .attr("width", svgWidth)
+      .attr("height", svgHeight);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(volumeData)])
+      .range([0, svgHeight]);
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(data)])
+      .range([svgHeight, 0]);
+
+    const x_axis = d3.axisBottom().scale(xScale);
+
+    const xAxisTranslate = svgHeight - 20;
+
+    svg
+      .append("g")
+      .attr("transform", "translate(50, " + xAxisTranslate + ")")
+      .call(x_axis);
+
+    const barChart = svg
+      .selectAll("rect")
+      .data(volumeData)
+      .enter()
+      .append("rect")
+      .attr("y", function(d) {
+        return svgHeight - yScale(d);
+      })
+      .attr("height", function(d) {
+        return yScale(d);
+      })
+      .attr("width", barWidth - barPadding)
+      .attr("transform", function(d, i) {
+        const translate = [barWidth * i + 55, -20];
+        return "translate(" + translate + ")";
+      });
   })
   .catch(e => {
     console.log(e);
