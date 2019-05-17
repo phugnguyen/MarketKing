@@ -38,6 +38,19 @@ fetch(proxyUrl + targetUrl)
       .scaleLinear()
       .domain([0, d3.max(volumeData)])
       .range([0, svgHeight]);
+    console.log(d3.max(volumeData));
+
+    const yScaleAxis = d3
+      .scaleLinear()
+      .domain([0, d3.max(volumeData)])
+      .range([svgHeight, 0]);
+
+    const y_axis = d3.axisLeft().scale(yScaleAxis);
+
+    svg
+      .append("g")
+      .attr("transform", "translate(50,10)")
+      .call(y_axis);
 
     const xScale = d3
       .scaleLinear()
