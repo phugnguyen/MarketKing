@@ -6,12 +6,42 @@ const url = "https://api-pub.bitfinex.com/v2";
 // query parmas limit(number of candles, max:5000)
 // start(ms) end(ms) sort(if = 1 it sorts old to new)
 
-let timeFrame = "15m";
+let timeFrame = "3h";
 let ticker = "tBTCUSD";
 let arrayData;
 
 const proxyUrl = "https://cors-anywhere.herokuapp.com/",
-  targetUrl = `${url}/candles/trade:${timeFrame}:${ticker}/hist?limit=365`;
+  targetUrl = `${url}/candles/trade:${timeFrame}:${ticker}/hist?limit=100`;
+
+function findRelativeStrength(arr) {
+  let lossSum = 0;
+  let gainSum = 0;
+
+  let i = 0;
+  let length = arr.length;
+
+  for (i; i < length; i++) {
+    lossSum += arr[0];
+    gainSum += arr[1];
+  }
+  const avgLoss = lossSum / length;
+  const avgGain = gainSum / length;
+
+  return [avgLoss, avgGain];
+}
+
+function findChange(arr) {
+  let result = [[0, 0]];
+  let i = 0;
+  let length = arr.length;
+
+  for (i; i < length - 1; i++) {
+    const change = arr[i + 1] - arr[i];
+    change > 0 ? result.push([0, change]) : result.push([-1 * change, 0]);
+  }
+
+  return result;
+}
 
 fetch(proxyUrl + targetUrl)
   .then(response => response.json())
@@ -20,66 +50,44 @@ fetch(proxyUrl + targetUrl)
     arrayData = data;
 
     let volumeData = [];
+    let priceData = [];
     arrayData.map(el => {
       volumeData.push(el[5]);
+      priceData.push([el[0], el[2]]);
     });
 
-    const svgWidth = 4000,
-      svgHeight = 2000,
-      barPadding = 5;
-    const barWidth = svgHeight / volumeData.length;
+    const svgWidth = window.innerWidth / 2,
+      svgHeight = window.innerHeight / 6,
+      barPadding = 0;
+
+    const barWidth = svgWidth / volumeData.length;
 
     const svg = d3
       .select("svg")
       .attr("width", svgWidth)
       .attr("height", svgHeight);
 
-    const yScale = d3
+    const yScaleVolume = d3
       .scaleLinear()
       .domain([0, d3.max(volumeData)])
       .range([0, svgHeight]);
-    console.log(d3.max(volumeData));
 
-    const yScaleAxis = d3
-      .scaleLinear()
-      .domain([0, d3.max(volumeData)])
-      .range([svgHeight, 0]);
+    const rectContainer = svg.append("svg");
 
-    const y_axis = d3.axisLeft().scale(yScaleAxis);
-
-    svg
-      .append("g")
-      .attr("transform", "translate(50,10)")
-      .call(y_axis);
-
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, d3.max(data)])
-      .range([svgHeight, 0]);
-
-    const x_axis = d3.axisBottom().scale(xScale);
-
-    const xAxisTranslate = svgHeight - 20;
-
-    svg
-      .append("g")
-      .attr("transform", "translate(50, " + xAxisTranslate + ")")
-      .call(x_axis);
-
-    const barChart = svg
+    rectContainer
       .selectAll("rect")
       .data(volumeData)
       .enter()
       .append("rect")
       .attr("y", function(d) {
-        return svgHeight - yScale(d);
+        return svgHeight - yScaleVolume(d);
       })
       .attr("height", function(d) {
-        return yScale(d);
+        return yScaleVolume(d);
       })
       .attr("width", barWidth - barPadding)
       .attr("transform", function(d, i) {
-        const translate = [barWidth * i + 55, -20];
+        const translate = [barWidth * i, -20];
         return "translate(" + translate + ")";
       });
   })
